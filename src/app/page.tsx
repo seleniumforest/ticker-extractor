@@ -1,95 +1,113 @@
-import Image from "next/image";
+"use client";
+import { Fragment, useState } from "react";
 import styles from "./page.module.css";
+import { useQuery } from "react-query";
 
 export default function Home() {
+  const [selectedQuotes, setQuote] = useState<string[] | null>(null);
+  const [format, setFormat] = useState<string>("base/quote");
+  const [copyBtnText, setCopyBtnText] = useState<"Copy" | "Copied!">("Copy");
+  const [cleanLevTickers, setCleanLevTickers] = useState<boolean>(true);
+  const [cleanNonTradable, setCleanNonTradable] = useState<boolean>(true);
+
+  const { isLoading, error, data, } = useQuery<{
+    id: string,
+    base: string,
+    quote: string,
+    trade_status: string
+  }[]>({
+    queryKey: "gate",
+    queryFn: () => fetch('/api/gate').then(res => res.json()),
+    cacheTime: 694201337
+  });
+
+  if (isLoading) return 'Loading...';
+  if (error || !data) return 'Error...';
+
+  let allQuotes = [...new Set(data.map(x => x.quote))];
+  if (selectedQuotes === null) {
+    setQuote([...allQuotes]);
+    return 'Loading...';
+  }
+
+  let result = data
+    .filter(x => selectedQuotes && selectedQuotes.includes(x.quote))
+    .filter(x => cleanLevTickers ? !x.base.endsWith("3L") && !x.base.endsWith("3S") && !x.base.endsWith("5L") && !x.base.endsWith("5S") : true)
+    .filter(x => cleanNonTradable ? x.trade_status === "tradable" : true)
+    .map(x => format.replace("base", x.base).replace("quote", x.quote)) || [];
+
   return (
     <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
+      <div>
+        <b>Exchange:</b>
+        <div>
+          <select>
+            <option value={"gate"}>Gate</option>
+          </select>
         </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+      <div>
+        <b>Quote:</b>
+        <div>
+          {allQuotes.map(q => {
+            return (
+              <Fragment key={q}>
+                <label>
+                  <input type="checkbox" checked={selectedQuotes.includes(q)} value={q} onChange={(e) =>
+                    setQuote(e.target.checked ?
+                      [...(selectedQuotes || []), q] :
+                      (selectedQuotes || []).filter(x => x !== q))}
+                  ></input> {q}
+                </label>
+                <br />
+              </Fragment>
+            )
+          })}
+        </div>
+      </div>
+      <div>
+        <b>Cleanup options:</b>
+        <div>
+          <label>
+            <input type="checkbox" checked={cleanLevTickers} onChange={(e) => setCleanLevTickers(e.target.checked)}></input>
+            Clean 3L/3S/5L/5S tickers
+          </label>
+          <br></br>
+          <label>
+            <input type="checkbox" checked={cleanNonTradable} onChange={(e) => setCleanNonTradable(e.target.checked)}></input>
+            Clean non tradable tokens
+          </label>
+        </div>
+      </div>
+      <div>
+        <b>Format:</b>
+        <div>
+          <input type="text" placeholder="set output format" onChange={(e) => setFormat(e.target.value)} value={format}></input>
+        </div>
+      </div>
+      <div>
+        <b>Output:</b>
+        <div>
+          <div className={styles.btns}>
+            <button onClick={(btn) => {
+              let el = document.createElement("input");
+              el.value = result.join(";");
+              el.select();
+              el.setSelectionRange(0, 99999);
+              navigator.clipboard.writeText(el.value.split(";").join("\n"));
+              setCopyBtnText("Copied!")
+              setTimeout(() => setCopyBtnText("Copy"), 5000);
+            }}>{copyBtnText}</button>
+            <button onClick={() => {
+              let link = document.createElement('a');
+              link.href = 'data:text/plain;charset=UTF-8,' + result.join("\n");
+              link.download = 'output.txt';
+              link.click();
+            }}>Export to .txt</button>
+          </div>
+          <textarea spellCheck={false} cols={20} rows={50} value={result.join("\n")} readOnly></textarea>
+        </div>
+      </div>
     </div>
   );
 }

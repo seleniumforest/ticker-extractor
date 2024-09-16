@@ -5,7 +5,7 @@ import { useQuery } from "react-query";
 
 export default function Home() {
   const [selectedQuotes, setQuote] = useState<string[] | null>(null);
-  const [format, setFormat] = useState<string>("base/quote");
+  const [format, setFormat] = useState<string>("GATEIO:basequote");
   const [copyBtnText, setCopyBtnText] = useState<"Copy" | "Copied!">("Copy");
   const [cleanLevTickers, setCleanLevTickers] = useState<boolean>(true);
   const [cleanNonTradable, setCleanNonTradable] = useState<boolean>(true);
@@ -101,9 +101,18 @@ export default function Home() {
             <button onClick={() => {
               let link = document.createElement('a');
               link.href = 'data:text/plain;charset=UTF-8,' + result.join("\n");
-              link.download = 'output.txt';
+              link.download = `output.txt`;
               link.click();
-            }}>Export to .txt</button>
+            }}>{`Export to .txt (1 file)`}</button>
+            <button onClick={() => {
+              for (let i = 0; i < result.length; i += 999) {
+                let batch = result.slice(i, i + 999);
+                let link = document.createElement('a');
+                link.href = 'data:text/plain;charset=UTF-8,' + batch.join("\n");
+                link.download = `output${i + 1}-${i + batch.length}.txt`;
+                link.click();
+              }
+            }}>{`Export to .txt (${Math.ceil(result.length / 999)} files)`}</button>
           </div>
           <textarea spellCheck={false} cols={20} rows={50} value={result.join("\n")} readOnly></textarea>
         </div>

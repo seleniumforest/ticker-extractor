@@ -3,23 +3,41 @@ import { Fragment, useState } from "react";
 import styles from "./binance.module.css";
 import { useQuery } from "react-query";
 
+
+type TickerData = {
+  symbol: string,
+  baseAsset: string,
+  quoteAsset: string,
+  status: string,
+  isSpotTradingAllowed: boolean
+};
+
+type VolumeData = {
+  symbol: string,
+  quoteVolume: string
+}
+
 export default function Binance() {
   const [selectedQuotes, setQuote] = useState<string[] | null>(null);
   const [format, setFormat] = useState<string>("BINANCE:{base}{quote}");
   const [copyBtnText, setCopyBtnText] = useState<"Copy" | "Copied!">("Copy");
   const [cleanNonTradable, setCleanNonTradable] = useState<boolean>(true);
+  const [sortByVol, setSortByVol] = useState<boolean>(true);
 
-  const { isLoading, error, data, } = useQuery<{
-    symbol: string,
-    baseAsset: string,
-    quoteAsset: string,
-    status: string,
-    isSpotTradingAllowed: boolean
-  }[]>({
+  const { isLoading, error, data, } = useQuery<(TickerData & { quoteVolume: number })[]>({
     queryKey: ["binance"],
-    queryFn: () => fetch('https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT')
-      .then(res => res.json())
-      .then(res => res.symbols),
+    queryFn: async () => {
+      return Promise.all([
+        fetch('https://api.binance.com/api/v3/exchangeInfo?permissions=SPOT').then(res => res.json()).then(res => res.symbols),
+        fetch('https://api.binance.com/api/v3/ticker/24hr').then(res => res.json())
+      ])
+        .then(([tickerData, volumeData]: [tickerData: TickerData[], volumeData: VolumeData[]]) => {
+          return tickerData.map(t => ({
+            ...t,
+            quoteVolume: Number(volumeData.find(v => v.symbol === t.symbol)?.quoteVolume || "0")
+          }))
+        })
+    },
     cacheTime: Infinity
   });
 
@@ -35,6 +53,13 @@ export default function Binance() {
   let result = data
     .filter(x => selectedQuotes && selectedQuotes.includes(x.quoteAsset))
     .filter(x => cleanNonTradable ? x.status === "TRADING" : true)
+    .sort((a, b) => {
+      if (sortByVol) {
+        return b.quoteVolume - a.quoteVolume;
+      } else {
+        return a.symbol > b.symbol ? 1 : -1;
+      }
+    })
     .map(x => format.replace("{base}", x.baseAsset).replace("{quote}", x.quoteAsset)) || [];
 
   return (
@@ -78,6 +103,15 @@ export default function Binance() {
         <b>Format:</b>
         <div>
           <input type="text" placeholder="set output format" onChange={(e) => setFormat(e.target.value)} value={format}></input>
+        </div>
+      </div>
+      <div>
+        <b>Sort:</b>
+        <div>
+          <label>
+            <input type="checkbox" checked={sortByVol} onChange={(e) => setSortByVol(e.target.checked)}></input>
+            Sort by volume
+          </label>
         </div>
       </div>
       <div>

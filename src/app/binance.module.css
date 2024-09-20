@@ -1,0 +1,17 @@
+.page {
+  background-color: white;
+}
+
+.page>div {
+  margin-bottom: 15px;
+}
+
+.btns button {
+  margin: 10px 10px 10px 0;
+  width: 150px;
+  height: 60px;
+}
+
+.quote button {
+  margin-right: 10px;
+}

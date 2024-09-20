@@ -1,11 +1,11 @@
 "use client";
 import { Fragment, useState } from "react";
-import styles from "./page.module.css";
+import styles from "./gate.module.css";
 import { useQuery } from "react-query";
 
-export default function Home() {
+export default function Gate() {
   const [selectedQuotes, setQuote] = useState<string[] | null>(null);
-  const [format, setFormat] = useState<string>("GATEIO:basequote");
+  const [format, setFormat] = useState<string>("GATEIO:{base}{quote}");
   const [copyBtnText, setCopyBtnText] = useState<"Copy" | "Copied!">("Copy");
   const [cleanLevTickers, setCleanLevTickers] = useState<boolean>(true);
   const [cleanNonTradable, setCleanNonTradable] = useState<boolean>(true);
@@ -16,9 +16,9 @@ export default function Home() {
     quote: string,
     trade_status: string
   }[]>({
-    queryKey: "gate",
+    queryKey: ["gate"],
     queryFn: () => fetch('/api/gate').then(res => res.json()),
-    cacheTime: 694201337
+    cacheTime: Infinity
   });
 
   if (isLoading) return 'Loading...';
@@ -34,18 +34,10 @@ export default function Home() {
     .filter(x => selectedQuotes && selectedQuotes.includes(x.quote))
     .filter(x => cleanLevTickers ? !x.base.endsWith("3L") && !x.base.endsWith("3S") && !x.base.endsWith("5L") && !x.base.endsWith("5S") : true)
     .filter(x => cleanNonTradable ? x.trade_status === "tradable" : true)
-    .map(x => format.replace("base", x.base).replace("quote", x.quote)) || [];
+    .map(x => format.replace("{base}", x.base).replace("{quote}", x.quote)) || [];
 
   return (
     <div className={styles.page}>
-      <div>
-        <b>Exchange:</b>
-        <div>
-          <select>
-            <option value={"gate"}>Gate</option>
-          </select>
-        </div>
-      </div>
       <div>
         <b>Quote:</b>
         <div>

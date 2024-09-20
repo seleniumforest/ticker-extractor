@@ -1,8 +1,11 @@
 "use client";
-import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { QueryClient, QueryClientProvider } from "react-query";
+import 'react-tabs/style/react-tabs.css';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import Gate from "./gate";
+import Binance from "./binance";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -15,18 +18,32 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+    },
+  },
+})
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout() {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <Tabs>
+            <TabList>
+              <Tab>Gate</Tab>
+              <Tab>Binance</Tab>
+            </TabList>
+
+            <TabPanel>
+              <Gate />
+            </TabPanel>
+            <TabPanel>
+              <Binance />
+            </TabPanel>
+          </Tabs>
         </QueryClientProvider>
       </body>
     </html>

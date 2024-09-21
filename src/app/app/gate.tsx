@@ -2,16 +2,12 @@
 import { Fragment, useState } from "react";
 import styles from "./gate.module.css";
 import { useQuery } from "react-query";
-import throttledQueue from "throttled-queue";
-
-const queue = throttledQueue(2, 1000);
 
 type PairsData = {
-  id: string,
   base: string,
-  quote: string,
-  trade_status: string
-  vol?: number
+  quote: string
+  vol: number,
+  trade_status: string,
 };
 
 export default function Gate() {
@@ -21,33 +17,15 @@ export default function Gate() {
   const [cleanLevTickers, setCleanLevTickers] = useState<boolean>(true);
   const [cleanNonTradable, setCleanNonTradable] = useState<boolean>(true);
   const [sortByVol, setSortByVol] = useState<boolean>(false);
-  const [fetchRunning, setFetchRunning] = useState<boolean>(false);
-  const [prog, setProg] = useState<[number, number]>([1, 1]);
 
-  const { isLoading, error, data } = useQuery({
+  const { isLoading, error, data } = useQuery<PairsData[]>({
     queryKey: ["gate"],
-    queryFn: async () => {
-      let pairsResponse = await fetch('/api/gate').then(res => res.json()) as PairsData[];
-      let { volumes } = await fetchVolumes(setProg, setFetchRunning);
-
-      return pairsResponse.map((x) => {
-        let vol = volumes.find((dv: any) => dv.pair === `${x.base}_${x.quote}`)?.volume;
-
-        return {
-          ...x,
-          vol: Number(vol || "0")
-        }
-      })
-    },
+    queryFn: async () => fetch('/api/gate').then(res => res.json()),
     cacheTime: Infinity,
   });
 
   if (isLoading) {
-    if (fetchRunning) {
-      return `Loading volumes: ${prog[0]} of ${prog[1]}`
-    } else {
-      return 'Loading...'
-    }
+    return 'Loading...'
   };
   if (error || !data) return 'Error';
 
@@ -63,7 +41,7 @@ export default function Gate() {
     .filter(x => cleanNonTradable ? x.trade_status === "tradable" : true)
     .sort((a, b) => {
       if (sortByVol) {
-        return (b.vol || 0) - (a.vol || 0)
+        return b.vol - a.vol
       } else {
         return a.base > b.base ? 1 : -1;
       }
@@ -118,8 +96,6 @@ export default function Gate() {
             <input type="checkbox" checked={sortByVol} onChange={(e) => setSortByVol(e.target.checked)}></input>
             Sort by volume
           </label>
-          <br></br>
-          {fetchRunning && <label>Fetching volume data: ${prog[0]} of ${prog[1]}</label>}
         </div>
       </div>
       <div>
@@ -156,86 +132,4 @@ export default function Gate() {
       </div>
     </div>
   );
-}
-
-async function fetchVolumes(
-  setProg: (p: [number, number]) => void,
-  setFetchRunning: (p: boolean) => void
-) {
-  let volumesStatus = "";
-  do {
-    let volResp: any;
-    let volRespOk: boolean = false;
-
-    //try fetch from server
-    try {
-      let resp = await fetch('/api/gate_volumes');
-      volResp = await resp.json();
-      volRespOk = resp.ok;
-      volumesStatus = volResp?.status;
-    } catch (e) { console.log(e) }
-
-    if (volumesStatus === "FETCHING") {
-      setFetchRunning(true);
-      setProg(volResp.progress);
-      await new Promise(res => setTimeout(res, 3000));
-    }
-    //if server failed try fetch on client
-    else if (volumesStatus === "ERROR" || !volRespOk) {
-      setFetchRunning(false);
-      try {
-        let volumes = await fetchVolumesOnClient(setProg, setFetchRunning);
-        return volumes;
-      } catch (e) {
-        console.log(e);
-        return;
-      }
-    }
-    else if (volumesStatus === "OK") {
-      setFetchRunning(false);
-      return volResp;
-    }
-  }
-  while (volumesStatus === "FETCHING")
-}
-
-async function fetchVolumesOnClient(
-  setProgress: (prog: [number, number]) => void,
-  setRunning: (r: boolean) => void
-) {
-  setRunning(true);
-  let page = 1;
-  let pageSize = 50;
-  let total = 0;
-  let result: {
-    pair: string,
-    volume: number
-  }[] = [];
-
-  do {
-    let response = await queue(() => fetch("https://www.gate.io/api-price/api/inner/v2/price/getAllCoinList", {
-      method: "POST",
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `is_gate=1000001&tab=trade&page=${page}&pageSize=${pageSize}`
-    }).then(x => x.json()));
-
-    if (response.message != "success") {
-      return Promise.reject(response.message);
-    }
-
-    result.push(...response.data.list.flatMap((l: any) => {
-      return l.trade_market.map((tm: any) => ({
-        pair: tm.pair,
-        volume: Number(l.volume_24h || "0")
-      }))
-    }))
-
-    total = response.data.totalCount;
-    page++;
-    setProgress([page, Math.ceil(total / pageSize)]);
-    console.log([page, Math.ceil(total / pageSize)]);
-  } while (page * pageSize < total);
-
-  setRunning(false);
-  return result;
 }

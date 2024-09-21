@@ -2,9 +2,10 @@
 import "../globals.css";
 import { QueryClient, QueryClientProvider } from "react-query";
 import 'react-tabs/style/react-tabs.css';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import { Tab, Tabs, TabList, TabPanel, TabPanelProps } from 'react-tabs';
 import Gate from "./gate";
 import Binance from "./binance";
+import { useEffect, useState } from "react";
 
 const queryClient = new QueryClient({
     defaultOptions: {
@@ -14,22 +15,35 @@ const queryClient = new QueryClient({
     },
 })
 
-export default function App() {
+export default function MainPage() {
+    const [tabIndex, setTabIndex] = useState(0);
+
     return (
         <QueryClientProvider client={queryClient}>
-            <Tabs>
+            <Tabs selectedIndex={tabIndex} onSelect={(index) => setTabIndex(index)}>
                 <TabList>
-                    <Tab>Gate</Tab>
                     <Tab>Binance</Tab>
+                    <Tab>Gate</Tab>
                 </TabList>
-
-                <TabPanel>
-                    <Gate />
-                </TabPanel>
-                <TabPanel>
+                <LazyTabPanel>
                     <Binance />
-                </TabPanel>
+                </LazyTabPanel>
+                <LazyTabPanel>
+                    <Gate />
+                </LazyTabPanel>
             </Tabs>
         </QueryClientProvider>
     )
 }
+
+const LazyTabPanel = (props: TabPanelProps) => {
+    const [initialized, setInitialized] = useState(false);
+    useEffect(() => {
+        if (props.selected && !initialized) {
+            setInitialized(true);
+        }
+    }, [props.selected, initialized]);
+
+    return <TabPanel forceRender={initialized} {...props} />;
+};
+LazyTabPanel.tabsRole = 'TabPanel';

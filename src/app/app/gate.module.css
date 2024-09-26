@@ -6,6 +6,10 @@
   margin-bottom: 15px;
 }
 
+.btns {
+  display: flex;
+}
+
 .btns button {
   margin: 10px 10px 10px 0;
   width: 150px;

@@ -40,13 +40,15 @@ export default function Gate() {
     .filter(x => cleanLevTickers ? !x.base.endsWith("3L") && !x.base.endsWith("3S") && !x.base.endsWith("5L") && !x.base.endsWith("5S") : true)
     .filter(x => cleanNonTradable ? x.trade_status === "tradable" : true)
     .sort((a, b) => {
-      if (sortByVol) {
-        return b.vol - a.vol
-      } else {
-        return a.base > b.base ? 1 : -1;
+      if (a.quote === b.quote && sortByVol) {
+        return b.vol - a.vol;
       }
+
+      return a.quote.localeCompare(b.quote);
     })
     .map(x => format.replace("{base}", x.base).replace("{quote}", x.quote)) || [];
+
+  let fileCount = Math.ceil(result.length / 999);
 
   return (
     <div className={styles.page}>
@@ -94,7 +96,7 @@ export default function Gate() {
         <div>
           <label>
             <input type="checkbox" checked={sortByVol} onChange={(e) => setSortByVol(e.target.checked)}></input>
-            Sort by volume
+            Sort by quote volume
           </label>
         </div>
       </div>
@@ -116,16 +118,18 @@ export default function Gate() {
               link.href = 'data:text/plain;charset=UTF-8,' + result.join("\n");
               link.download = `output.txt`;
               link.click();
-            }}>{`Export to .txt (1 file)`}</button>
-            <button onClick={() => {
-              for (let i = 0; i < result.length; i += 999) {
-                let batch = result.slice(i, i + 999);
-                let link = document.createElement('a');
-                link.href = 'data:text/plain;charset=UTF-8,' + batch.join("\n");
-                link.download = `output${i + 1}-${i + batch.length}.txt`;
-                link.click();
-              }
-            }}>{`Export to .txt (${Math.ceil(result.length / 999)} files)`}</button>
+            }}>{`Export to .txt`}</button>
+            {fileCount > 1 && (
+              <button onClick={() => {
+                for (let i = 0; i < result.length; i += 999) {
+                  let batch = result.slice(i, i + 999);
+                  let link = document.createElement('a');
+                  link.href = 'data:text/plain;charset=UTF-8,' + batch.join("\n");
+                  link.download = `output${i + 1}-${i + batch.length}.txt`;
+                  link.click();
+                }
+              }}>{`Export to ${Math.ceil(result.length / 999)} .txt files, split by 1000 items`}</button>
+            )}
           </div>
           <textarea spellCheck={false} cols={30} rows={50} value={result.join("\n")} readOnly></textarea>
         </div>

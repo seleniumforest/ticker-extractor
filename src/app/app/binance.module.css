@@ -12,6 +12,10 @@
   height: 60px;
 }
 
+.btns {
+  display: flex;
+}
+
 .quote button {
   margin-right: 10px;
 }

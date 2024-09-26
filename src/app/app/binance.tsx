@@ -3,7 +3,6 @@ import { Fragment, useState } from "react";
 import styles from "./binance.module.css";
 import { useQuery } from "react-query";
 
-
 type TickerData = {
   symbol: string,
   baseAsset: string,
@@ -54,13 +53,15 @@ export default function Binance() {
     .filter(x => selectedQuotes && selectedQuotes.includes(x.quoteAsset))
     .filter(x => cleanNonTradable ? x.status === "TRADING" : true)
     .sort((a, b) => {
-      if (sortByVol) {
+      if (a.quoteAsset === b.quoteAsset && sortByVol) {
         return b.quoteVolume - a.quoteVolume;
-      } else {
-        return a.symbol > b.symbol ? 1 : -1;
       }
+
+      return a.quoteAsset.localeCompare(b.quoteAsset);
     })
     .map(x => format.replace("{base}", x.baseAsset).replace("{quote}", x.quoteAsset)) || [];
+
+  let fileCount = Math.ceil(result.length / 999);
 
   return (
     <div className={styles.page}>
@@ -110,7 +111,7 @@ export default function Binance() {
         <div>
           <label>
             <input type="checkbox" checked={sortByVol} onChange={(e) => setSortByVol(e.target.checked)}></input>
-            Sort by volume
+            Sort by quote volume
           </label>
         </div>
       </div>
@@ -132,16 +133,18 @@ export default function Binance() {
               link.href = 'data:text/plain;charset=UTF-8,' + result.join("\n");
               link.download = `output.txt`;
               link.click();
-            }}>{`Export to .txt (1 file)`}</button>
-            <button onClick={() => {
-              for (let i = 0; i < result.length; i += 999) {
-                let batch = result.slice(i, i + 999);
-                let link = document.createElement('a');
-                link.href = 'data:text/plain;charset=UTF-8,' + batch.join("\n");
-                link.download = `output${i + 1}-${i + batch.length}.txt`;
-                link.click();
-              }
-            }}>{`Export to .txt (${Math.ceil(result.length / 999)} files)`}</button>
+            }}>{`Export to .txt`}</button>
+            {fileCount > 1 && (
+              <button onClick={() => {
+                for (let i = 0; i < result.length; i += 999) {
+                  let batch = result.slice(i, i + 999);
+                  let link = document.createElement('a');
+                  link.href = 'data:text/plain;charset=UTF-8,' + batch.join("\n");
+                  link.download = `output${i + 1}-${i + batch.length}.txt`;
+                  link.click();
+                }
+              }}>{`Export to ${Math.ceil(result.length / 999)} .txt files, split by 1000 items`}</button>
+            )}
           </div>
           <textarea spellCheck={false} cols={30} rows={50} value={result.join("\n")} readOnly></textarea>
         </div>

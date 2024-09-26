@@ -40,11 +40,20 @@ export default function Gate() {
     .filter(x => cleanLevTickers ? !x.base.endsWith("3L") && !x.base.endsWith("3S") && !x.base.endsWith("5L") && !x.base.endsWith("5S") : true)
     .filter(x => cleanNonTradable ? x.trade_status === "tradable" : true)
     .sort((a, b) => {
-      if (a.quote === b.quote && sortByVol) {
-        return b.vol - a.vol;
+      const quoteComparison = a.quote.localeCompare(b.quote);
+
+      if (sortByVol) {
+        if (quoteComparison === 0) {
+          return b.vol - a.vol;
+        }
+
+        return a.quote.localeCompare(b.quote);
       }
 
-      return a.quote.localeCompare(b.quote);
+      if (quoteComparison !== 0) {
+        return quoteComparison;
+      }
+      return a.base.localeCompare(b.base);
     })
     .map(x => format.replace("{base}", x.base).replace("{quote}", x.quote)) || [];
 

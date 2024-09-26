@@ -53,11 +53,20 @@ export default function Binance() {
     .filter(x => selectedQuotes && selectedQuotes.includes(x.quoteAsset))
     .filter(x => cleanNonTradable ? x.status === "TRADING" : true)
     .sort((a, b) => {
-      if (a.quoteAsset === b.quoteAsset && sortByVol) {
-        return b.quoteVolume - a.quoteVolume;
+      const quoteComparison = a.quoteAsset.localeCompare(b.quoteAsset);
+
+      if (sortByVol) {
+        if (quoteComparison === 0) {
+          return b.quoteVolume - a.quoteVolume;
+        }
+
+        return a.quoteAsset.localeCompare(b.quoteAsset);
       }
 
-      return a.quoteAsset.localeCompare(b.quoteAsset);
+      if (quoteComparison !== 0) {
+        return quoteComparison;
+      }
+      return a.baseAsset.localeCompare(b.baseAsset);
     })
     .map(x => format.replace("{base}", x.baseAsset).replace("{quote}", x.quoteAsset)) || [];
 
